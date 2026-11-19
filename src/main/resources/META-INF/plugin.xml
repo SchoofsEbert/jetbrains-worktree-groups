@@ -1,0 +1,23 @@
+<idea-plugin>
+    <id>io.github.schoofsebert.worktree-groups</id>
+    <name>Worktree Groups</name>
+    <vendor url="https://github.com/SchoofsEbert/jetbrains-worktree-groups">Ebert Schoofs</vendor>
+    <description><![CDATA[
+        Keeps the Recent Projects list tidy when you work with many git worktrees (for example with AI coding agents):
+        <ul>
+            <li>files each linked worktree into a collapsed "&lt;repo&gt; worktrees" group, keeping main repositories on top;</li>
+            <li>removes projects whose folder no longer exists, including the bare <code>.idea</code> folder the IDE leaves behind
+                when a worktree was removed while its project was known.</li>
+        </ul>
+        Only the Recent Projects list is changed: no files on disk are created or deleted.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <applicationListeners>
+        <listener class="io.github.schoofsebert.worktreegroups.RecentProjectsTidier"
+                  topic="com.intellij.openapi.application.ApplicationActivationListener"/>
+        <listener class="io.github.schoofsebert.worktreegroups.RecentProjectsTidier"
+                  topic="com.intellij.ide.AppLifecycleListener"/>
+    </applicationListeners>
+</idea-plugin>
