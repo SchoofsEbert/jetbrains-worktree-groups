@@ -3,6 +3,7 @@
 A JetBrains IDE plugin (IntelliJ IDEA, WebStorm, PyCharm, … 2026.2+) that keeps **Recent Projects** usable when you work with many git worktrees, for example with AI coding agents.
 
 - Each linked worktree goes into a collapsed `<repo> worktrees` group; main repositories stay on top.
+- The project switcher in the toolbar shows each group as one submenu, at the spot of its most recently used worktree. Open worktrees stay under Open Projects.
 - Projects whose folder is gone are removed from the list. That includes folders a removed worktree left behind: the IDE recreates `.idea/workspace.xml` when it saves a project whose folder was deleted.
 
 It runs on startup, when the IDE window gets focus, and when a project closes. It only changes the Recent Projects list, through the IDE's own API: it never creates or deletes files.

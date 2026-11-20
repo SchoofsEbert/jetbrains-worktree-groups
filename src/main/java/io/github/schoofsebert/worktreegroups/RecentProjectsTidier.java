@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
  */
 public final class RecentProjectsTidier implements ApplicationActivationListener, AppLifecycleListener {
     static final String GROUP_SUFFIX = " worktrees";
-    private static final String OWNED_GROUPS = "io.github.schoofsebert.worktreeGroups.ownedGroups";
+    static final String OWNED_GROUPS = "io.github.schoofsebert.worktreeGroups.ownedGroups";
     private static final Logger LOG = Logger.getInstance(RecentProjectsTidier.class);
     // gitdir of a linked worktree: <main>/.git/worktrees/<name>, or <bare>.git/worktrees/<name>
     private static final Pattern WORKTREE_GITDIR = Pattern.compile("^(.+?)(?:/\\.git)?/worktrees/[^/]+/?$");
