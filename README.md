@@ -4,13 +4,14 @@ A JetBrains IDE plugin (IntelliJ IDEA, WebStorm, PyCharm, … 2026.2+) that keep
 
 - Each linked worktree goes into a collapsed `<repo> worktrees` group; main repositories stay on top.
 - The project switcher in the toolbar shows each group as one submenu, at the spot of its most recently used worktree. Open worktrees stay under Open Projects.
+- An open project whose folder is removed gets closed without saving, so no `.idea` folder is left behind.
 - Projects whose folder is gone are removed from the list. That includes folders a removed worktree left behind: the IDE recreates `.idea/workspace.xml` when it saves a project whose folder was deleted.
 
-It runs on startup, when the IDE window gets focus, and when a project closes. It only changes the Recent Projects list, through the IDE's own API: it never creates or deletes files.
+It runs on startup, when the IDE window gets focus, and when a project closes. It works through the IDE's own API and never creates or deletes files.
 
 What it leaves alone:
 
-- open projects, and projects outside your home folder or in the IDE's own folders;
+- open projects whose folder still exists, and projects outside your home folder or in the IDE's own folders;
 - projects you put in a group yourself;
 - groups it didn't create.
 
