@@ -8,9 +8,10 @@
             <li>files each linked worktree into a collapsed "&lt;repo&gt; worktrees" group, keeping main repositories on top;</li>
             <li>removes projects whose folder no longer exists, including the bare <code>.idea</code> folder the IDE leaves behind
                 when a worktree was removed while its project was known;</li>
-            <li>shows each group as one submenu in the toolbar project switcher, placed by its most recently used worktree.</li>
+            <li>shows each group as one submenu in the toolbar project switcher, placed by its most recently used worktree;</li>
+            <li>closes, without saving, an open project whose folder was removed.</li>
         </ul>
-        Only the Recent Projects list is changed: no files on disk are created or deleted.
+        No files on disk are created or deleted.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -26,5 +27,9 @@
                   topic="com.intellij.openapi.application.ApplicationActivationListener"/>
         <listener class="io.github.schoofsebert.worktreegroups.RecentProjectsTidier"
                   topic="com.intellij.ide.AppLifecycleListener"/>
+        <listener class="io.github.schoofsebert.worktreegroups.RemovedProjectCloser"
+                  topic="com.intellij.openapi.vfs.newvfs.BulkFileListener"/>
+        <listener class="io.github.schoofsebert.worktreegroups.RemovedProjectCloser"
+                  topic="com.intellij.openapi.application.ApplicationActivationListener"/>
     </applicationListeners>
 </idea-plugin>
