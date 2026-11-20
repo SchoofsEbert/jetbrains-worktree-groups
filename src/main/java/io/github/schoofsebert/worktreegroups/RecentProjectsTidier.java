@@ -28,15 +28,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Drops recent projects whose folder is gone and files git worktrees into a collapsed
- * "&lt;repo&gt; worktrees" group per main repository.
- */
 public final class RecentProjectsTidier implements ApplicationActivationListener, AppLifecycleListener {
     static final String GROUP_SUFFIX = " worktrees";
     static final String OWNED_GROUPS = "io.github.schoofsebert.worktreeGroups.ownedGroups";
     private static final Logger LOG = Logger.getInstance(RecentProjectsTidier.class);
-    // gitdir of a linked worktree: <main>/.git/worktrees/<name>, or <bare>.git/worktrees/<name>
+    // <main>/.git/worktrees/<name> or <bare>.git/worktrees/<name>
     private static final Pattern WORKTREE_GITDIR = Pattern.compile("^(.+?)(?:/\\.git)?/worktrees/[^/]+/?$");
     private static final AtomicBoolean running = new AtomicBoolean();
     private static final AtomicBoolean rerun = new AtomicBoolean();
@@ -79,7 +75,7 @@ public final class RecentProjectsTidier implements ApplicationActivationListener
         });
     }
 
-    /** Clears the busy flag only after apply, and catches up on events that came in meanwhile. */
+    // after apply, so events during apply trigger a rerun
     private static void finish() {
         running.set(false);
         if (rerun.get()) schedule();
@@ -104,7 +100,6 @@ public final class RecentProjectsTidier implements ApplicationActivationListener
         }
     }
 
-    /** File system checks only, off the EDT. */
     static Plan plan(List<String> recentPaths, Set<Path> openProjects) {
         return plan(recentPaths, openProjects, Path.of(System.getProperty("user.home")), PathManager.getConfigDir(), PathManager.getSystemDir());
     }
@@ -115,7 +110,7 @@ public final class RecentProjectsTidier implements ApplicationActivationListener
         for (String recent : recentPaths) {
             try {
                 Path path = Path.of(recent).normalize();
-                // IDE-internal entries (light-edit) live in config/system dirs and may not exist on disk
+                // light-edit entries
                 if (path.startsWith(config) || path.startsWith(system) || !path.startsWith(home)) continue;
                 Path gitRoot = gitRootOf(path, home);
                 if (!openProjects.contains(path) && isGone(path, gitRoot)) {
@@ -131,12 +126,9 @@ public final class RecentProjectsTidier implements ApplicationActivationListener
         return new Plan(gone, groupFor);
     }
 
-    /**
-     * Missing, or what a removed worktree leaves behind: the IDE recreates .idea/workspace.xml when it
-     * saves a project whose folder was deleted. A real project's .idea always holds more than that.
-     */
+    // IDE recreates .idea/workspace.xml when saving a deleted project
     static boolean isGone(Path path, Path gitRoot) {
-        // notExists is false when access is denied: only a confirmed missing folder counts
+        // false on access denied
         if (Files.notExists(path)) return true;
         if (gitRoot != null || !Files.isDirectory(path)) return false;
         try (var top = Files.list(path); var idea = Files.list(path.resolve(".idea"))) {
@@ -147,7 +139,6 @@ public final class RecentProjectsTidier implements ApplicationActivationListener
         }
     }
 
-    /** Nearest folder at or above {@code path} (up to home) that has a .git entry. */
     static Path gitRootOf(Path path, Path home) {
         for (Path dir = path; dir != null && dir.startsWith(home) && !dir.equals(home); dir = dir.getParent()) {
             if (Files.exists(dir.resolve(".git"))) return dir;
@@ -155,7 +146,6 @@ public final class RecentProjectsTidier implements ApplicationActivationListener
         return null;
     }
 
-    /** Main repository of a linked git worktree, or null if {@code dir} isn't one. */
     static String mainRepoOf(Path dir) {
         Path dotGit = dir.resolve(".git");
         if (!Files.isRegularFile(dotGit)) return null;
@@ -167,15 +157,14 @@ public final class RecentProjectsTidier implements ApplicationActivationListener
         }
         if (!first.startsWith("gitdir:")) return null;
         Path gitDir = dir.resolve(first.substring("gitdir:".length()).trim()).normalize();
-        // submodules point to .git/modules/<name> and don't match
+        // submodules use .git/modules
         Matcher m = WORKTREE_GITDIR.matcher(gitDir.toString());
         return m.matches() ? m.group(1) : null;
     }
 
-    /** Mutations on the EDT. */
     private static void apply(Plan plan) {
         RecentProjectsManager manager = RecentProjectsManager.getInstance();
-        // a project may have opened since planning
+        // may have opened since planning
         Set<Path> open = openProjects();
         for (String path : plan.gone()) {
             if (manager.hasPath(path) && !open.contains(Path.of(path).normalize())) manager.removePath(path);
@@ -186,7 +175,7 @@ public final class RecentProjectsTidier implements ApplicationActivationListener
         for (var e : plan.groupFor().entrySet()) {
             String path = e.getKey();
             if (!manager.hasPath(path)) continue;
-            // respect projects someone filed into a group by hand
+            // grouped by hand
             if (manager.getGroups().stream().anyMatch(g -> g.getProjects().contains(path))) continue;
             ProjectGroup group = manager.getGroups().stream()
                 .filter(g -> g.getName().equals(e.getValue()))
@@ -200,10 +189,10 @@ public final class RecentProjectsTidier implements ApplicationActivationListener
                 });
             boolean expanded = group.isExpanded();
             manager.moveProjectToGroup(path, group);
-            group.setExpanded(expanded); // moveProjectToGroup always expands
+            group.setExpanded(expanded); // moveProjectToGroup expands
         }
 
-        // removeGroup also drops the group's projects from the list: only ever remove our own, empty ones
+        // removeGroup also drops its projects
         for (ProjectGroup group : List.copyOf(manager.getGroups())) {
             if (owned.contains(group.getName()) && group.getProjects().isEmpty()) {
                 manager.removeGroup(group);

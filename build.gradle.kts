@@ -8,7 +8,7 @@ plugins {
 group = "io.github.schoofsebert"
 version = providers.gradleProperty("pluginVersion").get()
 
-// the 2026.2 platform is compiled for Java 25
+// 2026.2 platform needs Java 25
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
 }
