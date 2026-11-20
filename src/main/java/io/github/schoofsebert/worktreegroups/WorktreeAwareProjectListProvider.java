@@ -1,15 +1,18 @@
 package io.github.schoofsebert.worktreegroups;
 
+import com.intellij.icons.AllIcons;
 import com.intellij.ide.ProjectGroup;
 import com.intellij.ide.RecentProjectListActionProvider;
 import com.intellij.ide.RecentProjectsManagerBase;
 import com.intellij.ide.ReopenProjectAction;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.ex.ActionUtil;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
@@ -27,14 +30,10 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-/**
- * Toolbar project switcher: shows each "&lt;repo&gt; worktrees" group as one submenu, placed where its
- * most recently used worktree would be. The switcher ignores Recent Projects groups otherwise.
- */
 public class WorktreeAwareProjectListProvider extends RecentProjectListActionProvider {
     private static final Logger LOG = Logger.getInstance(WorktreeAwareProjectListProvider.class);
 
-    // the switcher asks for the flat list; grouped lists (welcome screen) already show the groups
+    // only the toolbar switcher asks for a flat list
     @Override
     public @NotNull List<AnAction> getActions(boolean addClearListItem, boolean useGroups, boolean allowCustomProjectActions) {
         List<AnAction> actions = super.getActions(addClearListItem, useGroups, allowCustomProjectActions);
@@ -52,10 +51,6 @@ public class WorktreeAwareProjectListProvider extends RecentProjectListActionPro
         }
     }
 
-    /**
-     * Replaces the members of each group by a single submenu at the first member's position;
-     * keeps the order of everything else, and of the members inside the submenu.
-     */
     static <T> List<T> arrange(List<T> items, Function<T, String> groupOf, BiFunction<String, List<T>, T> submenu) {
         Map<String, List<T>> members = new LinkedHashMap<>();
         for (T item : items) {
@@ -72,7 +67,6 @@ public class WorktreeAwareProjectListProvider extends RecentProjectListActionPro
         return result;
     }
 
-    /** Project path → name, for the groups the tidier created. */
     private static Map<String, String> worktreeGroups() {
         List<String> owned = PropertiesComponent.getInstance().getList(RecentProjectsTidier.OWNED_GROUPS);
         Map<String, String> groupOf = new HashMap<>();
@@ -94,20 +88,47 @@ public class WorktreeAwareProjectListProvider extends RecentProjectListActionPro
     }
 
     private static AnAction submenu(String name, List<AnAction> members) {
-        DefaultActionGroup group = new DefaultActionGroup(name, true);
-        for (AnAction member : members) {
-            group.add(member instanceof ReopenProjectAction r ? new OpenWorktree(r) : member);
-        }
-        return group;
+        return new WorktreeGroup(name, members.stream()
+            .map(m -> m instanceof ReopenProjectAction r ? new OpenWorktree(r) : m)
+            .toList());
     }
 
-    /** Submenus use the plain popup renderer, which would show the repo name for every worktree: show the folder. */
+    private static final class WorktreeGroup extends DefaultActionGroup implements DumbAware {
+        WorktreeGroup(String name, List<AnAction> members) {
+            super(name, members);
+            setPopup(true);
+            getTemplatePresentation().setIcon(AllIcons.Nodes.Folder);
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            e.getPresentation().putClientProperty(ActionUtil.SECONDARY_TEXT, String.valueOf(getChildrenCount()));
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.BGT;
+        }
+    }
+
+    // plain submenu renderer would show the repo name for each
     private static final class OpenWorktree extends DumbAwareAction {
         private final ReopenProjectAction target;
 
         OpenWorktree(ReopenProjectAction target) {
             super(Path.of(target.getProjectPath()).getFileName().toString(), FileUtil.toSystemDependentName(target.getProjectPath()), null);
             this.target = target;
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            e.getPresentation().setIcon(target.getProjectIcon());
+            e.getPresentation().putClientProperty(ActionUtil.SECONDARY_TEXT, target.getBranchName());
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.BGT;
         }
 
         @Override

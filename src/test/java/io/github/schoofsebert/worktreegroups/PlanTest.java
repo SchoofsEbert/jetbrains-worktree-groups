@@ -75,16 +75,11 @@ class PlanTest {
 
     @Test
     void realProjectsAreKept() throws IOException {
-        // fresh IDE project: .idea holds more than workspace.xml
         file("fresh/.idea/workspace.xml", "<project/>");
         file("fresh/.idea/misc.xml", "<project/>");
-        // only hidden files, no .idea
         file("dotfiles/.zshrc", "");
-        // empty folder
         Path empty = dir("empty");
-        // plain project without git
         file("plain/index.js", "");
-        // .idea-only subfolder inside a git repo
         repo("repo");
         file("repo/sub/.idea/workspace.xml", "<project/>");
         var plan = plan(home.resolve("fresh"), home.resolve("dotfiles"), empty, home.resolve("plain"), home.resolve("repo/sub"));
