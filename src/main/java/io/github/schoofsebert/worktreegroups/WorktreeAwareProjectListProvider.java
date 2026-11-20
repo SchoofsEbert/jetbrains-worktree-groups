@@ -15,7 +15,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.util.io.FileUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -35,9 +34,11 @@ import java.util.function.Function;
 public class WorktreeAwareProjectListProvider extends RecentProjectListActionProvider {
     private static final Logger LOG = Logger.getInstance(WorktreeAwareProjectListProvider.class);
 
+    // the switcher asks for the flat list; grouped lists (welcome screen) already show the groups
     @Override
-    public @NotNull List<AnAction> getActions(@Nullable Project project) {
-        List<AnAction> actions = super.getActions(project);
+    public @NotNull List<AnAction> getActions(boolean addClearListItem, boolean useGroups, boolean allowCustomProjectActions) {
+        List<AnAction> actions = super.getActions(addClearListItem, useGroups, allowCustomProjectActions);
+        if (useGroups) return actions;
         try {
             Map<String, String> groupOf = worktreeGroups();
             if (groupOf.isEmpty()) return actions;
@@ -85,10 +86,9 @@ public class WorktreeAwareProjectListProvider extends RecentProjectListActionPro
 
     private static Set<String> openPaths() {
         Set<String> open = new HashSet<>();
-        RecentProjectsManagerBase manager = RecentProjectsManagerBase.getInstanceEx();
         for (Project project : ProjectManager.getInstance().getOpenProjects()) {
-            Path path = manager.getProjectPath(project);
-            if (path != null) open.add(FileUtil.toSystemIndependentName(path.toString()));
+            String base = project.getBasePath();
+            if (base != null) open.add(FileUtil.toSystemIndependentName(base));
         }
         return open;
     }
@@ -112,7 +112,7 @@ public class WorktreeAwareProjectListProvider extends RecentProjectListActionPro
 
         @Override
         public void actionPerformed(@NotNull AnActionEvent e) {
-            ActionUtil.invokeAction(target, e.getDataContext(), e.getPlace(), e.getInputEvent(), null);
+            ActionUtil.performAction(target, e);
         }
     }
 }
